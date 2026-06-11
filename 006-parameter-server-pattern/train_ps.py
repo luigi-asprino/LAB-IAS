@@ -46,10 +46,6 @@ from dataset import load_from_gcs
 #     "task": { "type": "workerpool0", "index": 0 }
 #   }
 #
-# ATTENZIONE: Vertex AI NON usa le chiavi "ps"/"worker" della documentazione
-# TensorFlow. Usa "workerpool0", "workerpool1", ecc.
-# TASK_TYPE e TASK_INDEX sono variabili separate ma vengono iniettate vuote
-# da Vertex AI — bisogna leggere ruolo e indice da CLUSTER_SPEC["task"].
 # =============================================================================
 
 # Parsing difensivo: "or \"{}\"" gestisce il caso in cui la variabile

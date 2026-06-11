@@ -109,7 +109,7 @@ Dataset MNIST disponibile su GCS.
 
 Verifica:
 ```bash
-gsutil ls -lh gs://ias-luigi-asprino-bucket/datasets/mnist/train/
+gcloud storage ls gs://ias-luigi-asprino-bucket/datasets/mnist/train/
 ```
 
 ### Passo 4 — Build e push del container
@@ -127,9 +127,7 @@ docker build -t $IMAGE .
 docker push $IMAGE
 
 # Verifica che l'immagine sia presente
-gcloud artifacts docker images list \
-  europe-west4-docker.pkg.dev/test-project-493915/ias-repo \
-  --include-tags
+gcloud artifacts docker images list europe-west4-docker.pkg.dev/test-project-493915/ias-repo --include-tags
 ```
 
 ### Passo 5 — Lancia il job
@@ -153,6 +151,35 @@ Per controllare lo stato:
 ```
 
 ---
+
+```
+PS                                  Worker 0              Worker 1
+│                                   │                     │
+├─ init_rpc() ──────────────────────┤ init_rpc()          │ init_rpc()
+│  (attende tutti)                  │  (attende tutti)    │  (attende tutti)
+│◄──────────────── handshake completato ──────────────────┤
+│                                   │                     │
+├─ ParameterServer()                │                     │
+├─ RRef(ps)                         │                     │
+├─ shutdown(graceful=True) ◄────────┤ rpc.remote("ps")    │
+│  │                                │                     │
+│  ├◄── get_params() ───────────────┤ rpc_sync            │
+│  ├──► restituisce pesi ──────────►│                     │
+│  │                                │ forward+backward    │
+│  ├◄── update_params(grads) ───────┤ rpc_async           │
+│  ├─── optimizer.step()            │                     │
+│  │                                │  ...                │
+│  ├◄── get_params() ──────────────────────────────────── │ rpc_sync
+│  ├──► restituisce pesi ─────────────────────────────── ►│
+│  │                                │                     │ forward+backward
+│  ├◄── update_params(grads) ──────────────────────────── │ rpc_async
+│  ├─── optimizer.step()            │                     │
+│  │                                │  ...                │  ...
+│  ├◄── shutdown segnalato ─────────┤                     │
+│  ├◄── shutdown segnalato ────────────────────────────── │
+│
+└─ print("Shutdown completato.")
+```
 
 ## Monitoraggio
 
