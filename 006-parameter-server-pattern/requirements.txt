@@ -1,0 +1,4 @@
+torch>=2.0.0
+torchvision>=0.15.0
+gcsfs>=2023.1.0      # filesystem virtuale per leggere da GCS come se fosse disco locale
+google-cloud-storage>=2.0.0
