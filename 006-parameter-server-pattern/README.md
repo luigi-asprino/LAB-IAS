@@ -53,6 +53,8 @@ gcloud config set ai/region europe-west4
 | Bucket dataset | `ias-luigi-asprino-bucket` | Regione `us` — solo per dataset |
 | Bucket staging | `ias-luigi-asprino-bucket-eu` | Regione `europe-west4` — obbligatorio per Vertex AI |
 
+**Perché due bucket?** Il bucket `ias-luigi-asprino-bucket` era già esistente dalla Lezione 3 ed era stato creato in regione `us`. Vertex AI richiede che lo staging bucket sia nella **stessa regione** del job (`europe-west4`), quindi è stato necessario crearne uno nuovo. In un progetto creato da zero si userebbe un unico bucket in `europe-west4` per tutto (dataset, modelli e staging).
+
 ---
 
 ## Esecuzione passo per passo
@@ -79,14 +81,13 @@ gcloud artifacts repositories list \
 Il bucket di staging **deve essere nella stessa regione** del job Vertex AI. Il bucket `ias-luigi-asprino-bucket` è in `us` e non è utilizzabile come staging.
 
 ```bash
-gsutil mb \
-  -p test-project-493915 \
-  -l europe-west4 \
-  -b on \
-  gs://ias-luigi-asprino-bucket-eu
+gcloud storage buckets create gs://ias-luigi-asprino-bucket-eu \
+  --project=test-project-493915 \
+  --location=europe-west4 \
+  --uniform-bucket-level-access
 
 # Verifica la regione
-gsutil ls -L -b gs://ias-luigi-asprino-bucket-eu | grep "Location constraint"
+gcloud storage ls -L -b gs://ias-luigi-asprino-bucket-eu
 # Output atteso: EUROPE-WEST4
 ```
 
