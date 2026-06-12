@@ -255,27 +255,6 @@ def run_worker(ps_rref):
 
             print(f"[worker-{task_index}] epoch={epoch} loss={loss.item():.4f}")
 
-    # ── SALVATAGGIO MODELLO SU GCS ────────────────────────────────────────
-    # Solo worker-0 salva per evitare scritture concorrenti sullo stesso blob.
-    # NOTA: il filesystem /gcs/ NON è montato nei container Vertex AI.
-    # Bisogna usare l'SDK google-cloud-storage per scrivere su GCS.
-    if task_index == 0:
-        bucket_name = os.environ.get("GCS_BUCKET", "ias-luigi-asprino-bucket")
-
-        # Serializza lo state_dict (solo i pesi, non l'architettura)
-        # in un buffer in memoria invece di un file temporaneo su disco.
-        buf = io.BytesIO()
-        torch.save(local_model.state_dict(), buf)
-        buf.seek(0)  # Riporta il cursore all'inizio per la lettura
-
-        # Carica il buffer direttamente su GCS
-        client = gcs.Client()
-        bucket = client.bucket(bucket_name)
-        blob   = bucket.blob("models/lezione6/model.pth")
-        blob.upload_from_file(buf, content_type="application/octet-stream")
-        print(f"[worker-0] Modello salvato in gs://{bucket_name}/models/lezione6/model.pth")
-
-
 # =============================================================================
 # SEZIONE 6 — Entry point: divergenza PS / Worker
 # =============================================================================
@@ -299,6 +278,20 @@ if is_ps:
     # vada perso per terminazione prematura del PS.
     rpc.shutdown(graceful=True)
     print("[ps] Shutdown completato.")
+
+    # A questo punto tutti gli aggiornamenti sono stati applicati —
+    # ps.model contiene i pesi finali canonici del sistema distribuito
+    print("[ps] Training completato. Salvataggio modello su GCS...")
+
+    buf = io.BytesIO()
+    torch.save(ps.model.state_dict(), buf)
+    buf.seek(0)
+
+    client = gcs.Client()
+    bucket = client.bucket(os.environ.get("GCS_BUCKET", "ias-luigi-asprino-bucket"))
+    blob   = bucket.blob("models/lezione6/model.pth")
+    blob.upload_from_file(buf, content_type="application/octet-stream")
+    print("[ps] Modello salvato su GCS.")
 
 else:
     print(f"[worker-{task_index}] Avvio training...")
