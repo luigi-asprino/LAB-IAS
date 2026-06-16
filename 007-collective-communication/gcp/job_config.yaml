@@ -1,0 +1,80 @@
+# =============================================================================
+# job_config.yaml — Configurazione del Custom Training Job su Vertex AI
+# =============================================================================
+#
+# Vertex AI impone che workerPoolSpecs[0].replicaCount == 1 (il "master").
+# Per avere N worker totali si usano N pool distinti, ciascuno con replicaCount: 1.
+#
+# Con 2 pool da 1 replica ciascuno:
+#   pool 0 → rank 0 (master)   CLUSTER_SPEC: workerpool0
+#   pool 1 → rank 1 (worker)   CLUSTER_SPEC: workerpool1
+#
+# Vertex AI inietta automaticamente in ogni container:
+#   CLUSTER_SPEC → JSON con la topologia del cluster e il ruolo di questa replica
+#
+# ATTENZIONE: a differenza di torchrun, Vertex AI NON inietta RANK/WORLD_SIZE/
+# MASTER_ADDR direttamente. Li leggiamo da CLUSTER_SPEC in train_ddp.py.
+#
+# Lancio:
+#   gcloud ai custom-jobs create \
+#     --region=europe-west4 \
+#     --display-name=lab07-ddp-collective \
+#     --config=job_config.yaml
+#
+# Costo stimato (europe-west4):
+#   n1-standard-4 + T4: ~$0.45/ora per replica × 2 repliche
+#   Job di 5-10 minuti: ~$0.08-0.15
+# =============================================================================
+
+workerPoolSpecs:
+  # ── Pool 0: master (rank 0) — replicaCount DEVE essere 1 ──────────────
+  - machineSpec:
+      machineType: n1-standard-4
+      acceleratorType: NVIDIA_TESLA_T4
+      acceleratorCount: 1
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west4-docker.pkg.dev/test-project-493915/ias-repo/lab07-ddp:latest
+      env:
+        - name: USE_SYNTHETIC
+          value: "1"
+        - name: N_SAMPLES
+          value: "8000"
+        - name: N_FEATURES
+          value: "128"
+        - name: BATCH_SIZE
+          value: "256"
+        - name: N_EPOCHS
+          value: "5"
+        - name: LR
+          value: "0.05"
+        - name: GCS_BUCKET
+          value: "ias-luigi-asprino-bucket-eu"
+        - name: GCS_MODEL_PATH
+          value: "models/lezione7/"
+
+  # ── Pool 1: worker (rank 1) ───────────────────────────────────────────
+  - machineSpec:
+      machineType: n1-standard-4
+      acceleratorType: NVIDIA_TESLA_T4
+      acceleratorCount: 1
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west4-docker.pkg.dev/test-project-493915/ias-repo/lab07-ddp:latest
+      env:
+        - name: USE_SYNTHETIC
+          value: "1"
+        - name: N_SAMPLES
+          value: "8000"
+        - name: N_FEATURES
+          value: "128"
+        - name: BATCH_SIZE
+          value: "256"
+        - name: N_EPOCHS
+          value: "5"
+        - name: LR
+          value: "0.05"
+        - name: GCS_BUCKET
+          value: "ias-luigi-asprino-bucket-eu"
+        - name: GCS_MODEL_PATH
+          value: "models/lezione7/"
