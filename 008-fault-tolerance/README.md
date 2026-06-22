@@ -1,4 +1,4 @@
-# Lezione 8 — Elasticity e Fault-Tolerance: Spot VM e Checkpoint Automatici
+# Lezione 8 — Fault-Tolerance
 
 ## Struttura del repository
 
