@@ -1,0 +1,73 @@
+# =============================================================================
+# job_config.yaml — Custom Training Job con Spot VM su Vertex AI
+# =============================================================================
+#
+# Differenze rispetto alla Lezione 7:
+#   - scheduling.strategy: SPOT        → VM preemptible, ~80% più economica
+#   - scheduling.restartJobOnWorkerRestart: true
+#                                      → Vertex AI riavvia il container
+#                                        automaticamente dopo una preemption
+#   - Un solo pool (single-node): l'obiettivo è il checkpoint, non DDP
+#
+# Flusso preemption → riavvio:
+#   1. GCP decide di terminare la Spot VM
+#   2. Vertex AI invia SIGTERM al container (30s di preavviso)
+#   3. L'handler in train_spot.py intercetta SIGTERM e salva il checkpoint
+#      su gs://ias-luigi-asprino-bucket-eu/checkpoints/lezione8/checkpoint_latest.pt
+#   4. Il container termina con sys.exit(0)
+#   5. Vertex AI (restartJobOnWorkerRestart: true) riavvia il container
+#      su una nuova VM Spot (o Standard se le Spot non sono disponibili)
+#   6. train_spot.py trova il checkpoint su GCS e riprende dall'epoch N+1
+#
+# Costo stimato (europe-west4):
+#   n1-standard-4 Spot: ~$0.04/ora  vs  Standard: ~$0.19/ora
+#   Job di 20 epoch su dataset sintetico: ~5 minuti → trascurabile
+#   Su dataset reale (es. MNIST): ~20-30 minuti → ~$0.01-0.02
+#
+# Lancio:
+#   gcloud ai custom-jobs create \
+#     --region=europe-west4 \
+#     --display-name=lab08-spot-checkpoint \
+#     --config=job_config.yaml \
+#     --project=test-project-493915
+#
+# Monitoraggio:
+#   gcloud ai custom-jobs list --region=europe-west4 --project=test-project-493915
+#
+#   gcloud ai custom-jobs describe JOB_ID \
+#     --region=europe-west4 --project=test-project-493915
+#
+# Verifica checkpoint su GCS:
+#   gsutil ls gs://ias-luigi-asprino-bucket-eu/checkpoints/lezione8/
+#   gsutil stat gs://ias-luigi-asprino-bucket-eu/checkpoints/lezione8/checkpoint_latest.pt
+# =============================================================================
+
+workerPoolSpecs:
+  - machineSpec:
+      machineType: n1-standard-4
+    replicaCount: 1
+    containerSpec:
+      imageUri: europe-west4-docker.pkg.dev/test-project-493915/ias-repo/lab08-spot:v1
+      env:
+        - name: USE_SYNTHETIC
+          value: "0"
+        - name: N_SAMPLES
+          value: "4000"
+        - name: N_FEATURES
+          value: "128"
+        - name: BATCH_SIZE
+          value: "128"
+        - name: N_EPOCHS
+          value: "20"
+        - name: LR
+          value: "0.05"
+        - name: CHECKPOINT_INTERVAL
+          value: "1"
+        - name: GCS_BUCKET
+          value: "ias-luigi-asprino-bucket-eu"
+        - name: GCS_MODEL_PATH
+          value: "models/lezione8/"
+
+scheduling:
+  strategy: SPOT
+  restartJobOnWorkerRestart: true
