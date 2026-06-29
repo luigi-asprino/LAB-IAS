@@ -1,4 +1,4 @@
-# Lezione 9 — Sharded Service Pattern
+#  Sharded Service Pattern
 
 ## Panoramica
 
