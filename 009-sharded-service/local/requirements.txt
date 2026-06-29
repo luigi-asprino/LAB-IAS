@@ -1,0 +1,11 @@
+# requirements.txt — Lezione 9: Sharded Service Pattern
+#
+# Installazione:
+#   pip install -r requirements.txt
+#
+# Nota: torch viene installato nella versione CPU-only (più leggera).
+# Su GCP con GPU, il Dockerfile usa la versione CUDA specifica.
+
+torch>=2.1.0
+flask>=3.0.0
+requests>=2.31.0
