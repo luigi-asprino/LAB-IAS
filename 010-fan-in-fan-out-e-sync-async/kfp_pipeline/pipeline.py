@@ -75,9 +75,7 @@ def preprocess_shard(shard_path: str, output_dataset: Output[Dataset]):
     bottiglia di installazioni pip in coda.
     """
     import torch
-    import os
 
-    os.makedirs(shard_path, exist_ok=True)
     x = torch.randn(256, 20)
     y = torch.randint(0, 2, (256,))
     # output_dataset.path e' un path assegnato automaticamente da KFP:
