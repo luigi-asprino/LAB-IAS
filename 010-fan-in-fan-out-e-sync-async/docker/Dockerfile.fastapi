@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# torch e' necessario qui perche' celery_app/main.py importa
+# celery_app/tasks.py (per registrare i task Celery), e tasks.py fa
+# `import torch` in testa al modulo per costruire il modello di inferenza
+# usato sia da /predict (sincrono) sia dal task batch_predict_async.
+RUN pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    fastapi==0.111.0 \
+    uvicorn[standard]==0.30.1 \
+    celery[redis]==5.4.0 \
+    torch==2.2.2 \
+    redis==5.0.4
+
+COPY celery_app /app/celery_app
+
+CMD ["uvicorn", "celery_app.main:app", "--host", "0.0.0.0", "--port", "8000"]

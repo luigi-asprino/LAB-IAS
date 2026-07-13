@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# --extra-index-url (non --index-url) AGGIUNGE il repository CPU-only di
+# PyTorch a quello di default (PyPI), invece di sostituirlo: cosi' celery
+# e redis vengono comunque trovati su PyPI, mentre pip usa l'indice
+# PyTorch solo per torch (che li' ha le build CPU-only, piu' leggere).
+RUN pip install --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    celery[redis]==5.4.0 \
+    torch==2.2.2 \
+    redis==5.0.4
+
+COPY celery_app /app/celery_app
+COPY data /app/data
+
+CMD ["celery", "-A", "celery_app.tasks", "worker", "--loglevel=info"]

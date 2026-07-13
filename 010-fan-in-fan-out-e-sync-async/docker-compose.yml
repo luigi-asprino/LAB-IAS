@@ -1,0 +1,57 @@
+version: "3.9"
+
+# Lezione 10 — Fan-in/Fan-out & Sync/Async Pattern (tutto in locale)
+# ----------------------------------------------------------------
+# Servizi:
+#   redis        -> broker/backend per Celery (sostituisce Cloud Tasks)
+#                   e canale Pub/Sub (sostituisce Google Pub/Sub)
+#   celery-worker -> esegue i task asincroni (es. training PyTorch lungo)
+#   fastapi-app   -> espone endpoint sincrono + endpoint per sottomettere task async
+#
+# Avvio: docker compose up --build
+# Stop:  docker compose down
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: lezione10-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.celery
+    container_name: lezione10-celery-worker
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    volumes:
+      - ./celery_app:/app/celery_app
+      - ./data:/app/data
+    command: celery -A celery_app.tasks worker --loglevel=info --concurrency=2
+
+  fastapi-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.fastapi
+    container_name: lezione10-fastapi
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./celery_app:/app/celery_app
+    command: uvicorn celery_app.main:app --host 0.0.0.0 --port 8000 --reload
