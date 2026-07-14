@@ -13,6 +13,6 @@ RUN pip install --no-cache-dir \
     redis==5.0.4
 
 COPY celery_app /app/celery_app
-COPY data /app/data
+#COPY data /app/data
 
 CMD ["celery", "-A", "celery_app.tasks", "worker", "--loglevel=info"]

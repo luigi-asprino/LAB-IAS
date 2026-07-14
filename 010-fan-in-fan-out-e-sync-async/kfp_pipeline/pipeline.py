@@ -228,8 +228,6 @@ if __name__ == "__main__":
     # direttamente (non quando viene importato, es. da run_on_vertex_ai.py)
     kfp.local.init(runner=kfp.local.SubprocessRunner(use_venv=False))
 
-    os.makedirs("data/shard_0", exist_ok=True)
-
     pipeline_task = training_pipeline(
         shard_path="./data/shard_0",
         seeds=[1, 2, 3, 4],

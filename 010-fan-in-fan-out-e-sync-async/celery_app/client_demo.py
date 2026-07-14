@@ -50,6 +50,8 @@ def demo_async():
             print(f"Risultato finale: {status}")
             break
         time.sleep(1)
+    t1 = time.time()
+    print(f"{t1 - t0:.2f}s {(t1-t0)/BATCH_SIZE:.2f} ")
 
 
 if __name__ == "__main__":
