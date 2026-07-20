@@ -228,15 +228,19 @@ if __name__ == "__main__":
     texts = ["distributed training", "gpu memory management", "checkpointing"]
 
     print("\n--- Prima esecuzione (ci si aspetta MISS) ---")
+    t0 = time.perf_counter()
     tokens = preprocess_dataset(texts, max_len=32)
     features = extract_features(tokens, embedding_dim=16)
     print("Shape feature:", features.shape)
+    print(f"Time elapsed {time.perf_counter() - t0} ")
 
     print("\n--- Seconda esecuzione, stessi input (ci si aspetta HIT) ---")
+    t1 = time.perf_counter()
     tokens2 = preprocess_dataset(texts, max_len=32)
     features2 = extract_features(tokens2, embedding_dim=16)
     print("Shape feature:", features2.shape)
     assert torch.equal(features, features2)
+    print(f"Time elapsed {time.perf_counter() - t1} ")
 
     print("\n--- Terza esecuzione, parametro diverso (ci si aspetta MISS) ---")
     tokens3 = preprocess_dataset(texts, max_len=64)  # max_len cambiato!
