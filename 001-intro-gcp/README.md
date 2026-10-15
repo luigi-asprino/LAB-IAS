@@ -1,5 +1,7 @@
 # IAS Laboratorio – Lezione 1: Introduzione alla Google Cloud Platform
 
+**Slide della lezione:** [001-Introduzione a GCP (Google Slides)](https://docs.google.com/presentation/d/1VqRw35Wx7zyRx-SMacAycdQf6D-mmHPHHlw__3Za5qw/edit?usp=sharing)
+
 Comandi da eseguire, nell'ordine delle slide. Sostituite i valori tra `< >` con i vostri dati.
 
 ## 1. Installazione della gcloud CLI (Linux x86_64)
