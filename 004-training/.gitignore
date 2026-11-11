@@ -1,0 +1,5 @@
+# File generati durante l'esercitazione: non vanno committati
+key.json
+iris.csv
+model.joblib
+__pycache__/

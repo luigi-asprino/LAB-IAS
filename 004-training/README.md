@@ -10,7 +10,10 @@ Esercitazione: addestrare un `RandomForestClassifier` sul dataset Iris eseguendo
 | `lab4.py` | Script di training: legge `iris.csv` da GCS, addestra il modello, salva `model.joblib` |
 | `Dockerfile` | Immagine del container (base: container Vertex AI per scikit-learn) |
 | `job.yaml` | Specifica del Custom Training Job (macchina, immagine, directory di output) |
-| `key.json` | Chiave del service account per il test locale — **non va committata** (è nel `.gitignore`) |
+| `key.json` | *Generato al passo 4*: chiave del service account per il test locale — **non va committata** |
+
+`key.json`, `iris.csv` e `model.joblib` sono file generati durante l'esercitazione e devono
+restare fuori dal repository: sono esclusi dal `.gitignore` di questa cartella.
 
 ## Prerequisiti
 
@@ -32,6 +35,7 @@ export IMAGE=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/lab4-trainer:v1
 
 gcloud auth login
 gcloud config set project $PROJECT_ID
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 ```
 
 Se si cambiano progetto o bucket, aggiornare anche:
@@ -78,7 +82,6 @@ docker build --platform linux/amd64 -t lab4-trainer:latest .
 Creare una chiave per il service account (una sola volta):
 
 ```bash
-export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 gcloud iam service-accounts keys create key.json \
   --iam-account=$PROJECT_NUMBER-compute@developer.gserviceaccount.com
 ```
