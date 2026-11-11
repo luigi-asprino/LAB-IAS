@@ -9,10 +9,10 @@ Esercitazione: addestrare un `RandomForestClassifier` sul dataset Iris eseguendo
 |---|---|
 | `lab4.py` | Script di training: legge `iris.csv` da GCS, addestra il modello, salva `model.joblib` |
 | `Dockerfile` | Immagine del container (base: container Vertex AI per scikit-learn) |
-| `job.yaml` | Specifica del Custom Training Job (macchina, immagine, directory di output) |
+| `job.yaml` | *Generato al passo 6* dalle variabili del passo 0: specifica del Custom Training Job |
 | `key.json` | *Generato al passo 4*: chiave del service account per il test locale — **non va committata** |
 
-`key.json`, `iris.csv` e `model.joblib` sono file generati durante l'esercitazione e devono
+`key.json`, `iris.csv`, `model.joblib` e `job.yaml` sono file generati durante l'esercitazione e devono
 restare fuori dal repository: sono esclusi dal `.gitignore` di questa cartella.
 
 ## Prerequisiti
@@ -23,24 +23,42 @@ restare fuori dal repository: sono esclusi dal `.gitignore` di questa cartella.
 
 ## 0. Variabili
 
-Adattare i valori al proprio progetto e al proprio bucket, poi eseguire nel terminale
-(tutti i comandi successivi le usano):
+I propri valori si scrivono in **un solo punto**: questo blocco. Sostituire `<ID_DEL_PROGETTO_GCP>`
+e `<NOME_DEL_BUCKET>` con i propri valori (tra le virgolette), poi eseguire nel terminale.
+Tutti i comandi successivi, lo script e `job.yaml` prendono i valori da qui.
+Se si apre un nuovo terminale, rieseguire questo blocco.
 
 ```bash
-export PROJECT_ID=test-project-493915
-export REGION=europe-west4
-export BUCKET=ias-luigi-asprino-bucket
-export REPO=lab4-repo
-export IMAGE=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/lab4-trainer:v1
+export PROJECT_ID="<ID_DEL_PROGETTO_GCP>"    # es. my-project-123456
+export REGION="europe-west4"
+export BUCKET="<NOME_DEL_BUCKET>"            # senza gs://, es. ias-mario-rossi-bucket
+export REPO="lab4-repo"
+export IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/lab4-trainer:v1"
+
+echo $PROJECT_ID $BUCKET $IMAGE     # controllo: nessun valore deve contenere < >
 
 gcloud auth login
 gcloud config set project $PROJECT_ID
 export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 ```
 
-Se si cambiano progetto o bucket, aggiornare anche:
-- `BUCKET` in `lab4.py`;
-- `imageUri` e `outputUriPrefix` in `job.yaml`.
+### Parametri dello script
+
+`lab4.py` non contiene valori scritti nel codice: legge tutto da variabili d'ambiente.
+
+| Variabile | Obbligatoria | Default | Significato |
+|---|---|---|---|
+| `BUCKET` | sì | — | Bucket GCS con il dataset (senza `gs://`) |
+| `GOOGLE_CLOUD_PROJECT` | in locale | — | Progetto GCP (su Vertex AI si usa `CLOUD_ML_PROJECT_ID`, impostata automaticamente) |
+| `DATA_FILE` | no | `iris.csv` | Nome del dataset nel bucket |
+| `LABEL_COLUMN` | no | `variety` | Colonna da predire |
+| `N_ESTIMATORS` | no | `50` | Numero di alberi del RandomForest |
+| `TEST_SIZE` | no | `0.2` | Frazione dei dati usata come test set |
+| `SEED` | no | `42` | Seme per split e modello (risultati ripetibili) |
+| `AIP_MODEL_DIR` | no | `gs://$BUCKET/models/` | Dove salvare il modello (impostata da Vertex AI, vedi passo 6) |
+
+All'avvio lo script stampa la configurazione usata; se manca una variabile obbligatoria
+si ferma con un messaggio `ERRORE: ...`.
 
 ## 1. Abilitare le API
 
@@ -92,6 +110,7 @@ Eseguire il container passando credenziali e variabili d'ambiente:
 docker run --rm \
   -e AIP_MODEL_DIR=/modello-lab4 \
   -e GOOGLE_CLOUD_PROJECT=$PROJECT_ID \
+  -e BUCKET=$BUCKET \
   -e GOOGLE_APPLICATION_CREDENTIALS=/secrets/key.json \
   -v "$PWD/key.json":/secrets/key.json \
   lab4-trainer:latest
@@ -127,6 +146,31 @@ gcloud artifacts docker images list $REGION-docker.pkg.dev/$PROJECT_ID/$REPO
 
 ## 6. Lanciare il Custom Training Job
 
+Generare `job.yaml` dalle variabili del passo 0 (immagine, bucket e directory di output
+coincidono così per costruzione con quelli usati negli altri passi):
+
+```bash
+cat > job.yaml <<EOF
+workerPoolSpecs:
+- machineSpec:
+    machineType: n1-standard-4
+  replicaCount: 1
+  containerSpec:
+    imageUri: $IMAGE
+    env:
+    - name: BUCKET
+      value: $BUCKET
+baseOutputDirectory:
+  outputUriPrefix: gs://$BUCKET/lab4
+EOF
+cat job.yaml
+```
+
+Altri parametri dello script (es. `N_ESTIMATORS`) si aggiungono come ulteriori voci sotto `env:`.
+`baseOutputDirectory` fa sì che Vertex AI imposti `AIP_MODEL_DIR=gs://$BUCKET/lab4/model/`.
+
+Lanciare il job:
+
 ```bash
 gcloud ai custom-jobs create \
   --region=$REGION \
@@ -158,8 +202,7 @@ Il job è visibile anche nella console: **Vertex AI → Training → Custom jobs
 
 ## 8. Verifica del modello
 
-`job.yaml` imposta `baseOutputDirectory` a `gs://$BUCKET/lab4`, quindi Vertex AI passa allo
-script `AIP_MODEL_DIR=gs://$BUCKET/lab4/model/`:
+Il modello si trova in `AIP_MODEL_DIR`, cioè `gs://$BUCKET/lab4/model/`:
 
 ```bash
 gcloud storage ls gs://$BUCKET/lab4/model/
@@ -205,5 +248,7 @@ La VM del training viene deallocata automaticamente da Vertex AI al termine del 
 | `exec format error` nei log del job | Immagine costruita per arm64 (Mac Apple Silicon) | Ricostruire con `--platform linux/amd64` e rifare il push |
 | `403` / `Permission denied` su GCS nel test locale | Chiave mancante o service account senza accesso al bucket | Verificare il montaggio di `key.json` e i ruoli del service account |
 | `denied: Permission ... artifactregistry` al push | Docker non autenticato verso il registry | `gcloud auth configure-docker $REGION-docker.pkg.dev` |
-| `Image not found` all'avvio del job | `imageUri` in `job.yaml` diverso da `$IMAGE` | Allineare `job.yaml` al tag effettivamente caricato |
+| `Image not found` all'avvio del job | Variabili del passo 0 non impostate quando è stato generato `job.yaml` | Rieseguire il passo 0, poi rigenerare `job.yaml` (passo 6) |
+| Comandi con valori vuoti o con `<...>` | Passo 0 non eseguito nel terminale corrente o segnaposto non sostituiti | Sostituire i segnaposto e rieseguire il passo 0 |
+| `ERRORE: variabile d'ambiente BUCKET non impostata` | Manca `-e BUCKET=...` (locale) o la voce `env` in `job.yaml` | Aggiungere la variabile come nei passi 4 e 6 |
 | `model.joblib` assente in `gs://$BUCKET/lab4/model/` | Job fallito o `baseOutputDirectory` mancante | Controllare lo stato e i log del job (passo 7) |
