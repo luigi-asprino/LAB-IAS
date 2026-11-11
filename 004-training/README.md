@@ -224,6 +224,10 @@ gcloud artifacts repositories delete $REPO --location=$REGION --quiet
 # Output del training
 gcloud storage rm -r gs://$BUCKET/lab4/
 
+# (Opzionale) Intero bucket: cancella il bucket e TUTTO il suo contenuto, dataset compreso.
+# Operazione irreversibile: non eseguirla se il bucket serve ad altre lezioni.
+gcloud storage rm -r gs://$BUCKET
+
 # Chiave locale del service account: revocarla (l'ID si legge da key.json) e cancellare il file
 export KEY_ID=$(python3 -c "import json; print(json.load(open('key.json'))['private_key_id'])")
 gcloud iam service-accounts keys delete $KEY_ID \

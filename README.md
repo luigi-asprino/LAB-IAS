@@ -66,6 +66,75 @@ gcloud auth application-default login
 - **Non caricate mai su Git le chiavi dei service account** (`key.json`): il file è già
   escluso nel `.gitignore`. Preferite `gcloud auth application-default login`.
 
+### Eliminare le risorse a pagamento
+
+Alla fine di ogni lezione, e comunque a fine corso, verificate che nel progetto non restino
+risorse attive. Impostate prima le variabili (sostituire il segnaposto):
+
+```bash
+export PROJECT_ID="<ID_DEL_PROGETTO_GCP>"
+export REGION="europe-west4"
+gcloud config set project $PROJECT_ID
+gcloud config get-value project     # controllo: deve stampare il proprio progetto
+```
+
+**1. Inventario.** Questi comandi elencano le risorse che possono generare costi
+(un elenco vuoto significa che non c'è nulla da eliminare):
+
+```bash
+gcloud compute instances list                      # VM (anche con GPU), incluse le Spot VM
+gcloud compute disks list --filter="-users:*"      # dischi non collegati ad alcuna VM
+gcloud compute addresses list                      # indirizzi IP statici riservati
+gcloud workbench instances list --location=${REGION}-a   # istanze Vertex AI Workbench
+gcloud ai custom-jobs list --region=$REGION  --filter="state:(JOB_STATE_QUEUED JOB_STATE_PENDING JOB_STATE_RUNNING)"   # job ancora attivi
+gcloud ai endpoints list --region=$REGION          # endpoint di serving (costano finché esistono)
+gcloud run services list --region=$REGION          # servizi Cloud Run
+gcloud artifacts repositories list --location=$REGION    # immagini Docker
+gcloud storage buckets list --format="value(name)"  # bucket Cloud Storage
+```
+
+**2. Eliminazione.** Per ogni risorsa trovata, sostituire `NOME`, `ID` e `ZONA` con i valori
+mostrati dall'inventario:
+
+```bash
+# VM (il disco di avvio viene eliminato con la VM)
+gcloud compute instances delete NOME --zone=ZONA
+
+# Dischi non collegati e IP statici
+gcloud compute disks delete NOME --zone=ZONA
+gcloud compute addresses delete NOME --region=$REGION
+
+# Istanze Workbench
+gcloud workbench instances delete NOME --location=ZONA
+
+# Custom Training Job ancora in esecuzione (i job terminati non hanno costi)
+gcloud ai custom-jobs cancel ID --region=$REGION
+
+# Endpoint: prima si rimuovono i modelli deployati, poi l'endpoint
+gcloud ai endpoints describe ID --region=$REGION --format="value(deployedModels.id)"
+gcloud ai endpoints undeploy-model ID --region=$REGION --deployed-model-id=ID_MODELLO_DEPLOYATO
+gcloud ai endpoints delete ID --region=$REGION
+
+# Servizi Cloud Run
+gcloud run services delete NOME --region=$REGION
+
+# Repository di Artifact Registry (con tutte le immagini contenute)
+gcloud artifacts repositories delete NOME --location=$REGION
+
+# Bucket con tutto il contenuto (irreversibile)
+gcloud storage rm -r gs://NOME
+```
+
+Rieseguite l'inventario del punto 1 per controllare che tutti gli elenchi siano vuoti.
+
+**3. Soluzione drastica a fine corso.** Eliminare l'intero progetto arresta tutte le risorse
+e tutti i costi in un colpo solo. Il progetto resta recuperabile per 30 giorni con
+`gcloud projects undelete $PROJECT_ID`, poi viene cancellato definitivamente.
+
+```bash
+gcloud projects delete $PROJECT_ID
+```
+
 ---
 
 ## Esame e progetto

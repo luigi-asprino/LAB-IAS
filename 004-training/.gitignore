@@ -4,3 +4,4 @@ iris.csv
 model.joblib
 __pycache__/
 job.yaml
+env.sh
