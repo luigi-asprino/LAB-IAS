@@ -5,3 +5,4 @@ key.json
 local_outputs/
 010-fan-in-fan-out-e-sync-async/data/deployments.log
 .step_cache/
+model.joblib
