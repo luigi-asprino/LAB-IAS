@@ -139,12 +139,11 @@ gcloud projects delete $PROJECT_ID
 
 ## Esame e progetto
 
-L'esame prevede una prova teorica obbligatoria e un **progetto opzionale** che dà fino a
-5 punti di bonus: un sistema di ML distribuito che addestra un nuovo modello e implementa
-uno o più pattern architetturali visti a lezione. Il progetto va proposto e approvato dal
-docente prima di iniziare, e consegnato almeno due settimane prima della prova intermedia.
+Per tutte le informazioni sull'esame (modalità, prova teorica, progetto opzionale e relativo
+bonus, appelli) fa fede la [pagina del corso](https://www.uniroma5.it/insegnamenti/0322509INGINF05II).
 
-Le regole complete sono nelle [slide di introduzione al laboratorio](https://docs.google.com/presentation/d/1W3lTubEjEsBAc_SG2fAksUT1lfr2D6f6bnXEAqt9j9A/edit?usp=sharing) e sulla pagina del corso.
+Le regole operative del progetto sono riassunte anche nelle
+[slide di introduzione al laboratorio](https://docs.google.com/presentation/d/1W3lTubEjEsBAc_SG2fAksUT1lfr2D6f6bnXEAqt9j9A/edit?usp=sharing).
 
 ---
 
