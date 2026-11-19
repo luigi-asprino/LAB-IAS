@@ -9,11 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Variabili iniettate a runtime da Vertex AI — qui solo come placeholder
-# documentativo; i valori reali arrivano dall'orchestratore al lancio del job
-ENV CLUSTER_SPEC=""
-ENV TASK_TYPE=""
-ENV TASK_INDEX=""
-ENV GCS_BUCKET="ias-luigi-asprino-bucket"
+# Nessun valore di progetto o bucket nell'immagine: CLUSTER_SPEC è iniettata
+# da Vertex AI, BUCKET (e gli altri parametri) arrivano da job_run.py.
 
 CMD ["python", "train_ps.py"]

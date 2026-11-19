@@ -5,7 +5,7 @@
 # Questo script implementa il Collective Communication Pattern usando
 # torch.nn.parallel.DistributedDataParallel (DDP).
 #
-# A differenza del Parameter Server (Lezione 6), qui NON esiste un nodo
+# A differenza del Parameter Server (parte 1), qui NON esiste un nodo
 # centrale: tutti i processi sono simmetrici. La sincronizzazione dei
 # parametri avviene tramite all-reduce collettiva implementata da NCCL
 # (su GPU) o gloo (su CPU).
@@ -16,7 +16,7 @@
 #   torchrun --nproc_per_node=4 train_ddp.py   # 4 worker
 #
 # Lancio su Vertex AI:
-#   gcloud ai custom-jobs create --region=europe-west4 --config=job_config.yaml
+#   gcloud ai custom-jobs create --region=$REGION --config=job.yaml  (vedi gcp/README.md)
 #   (il container usa lo stesso script con backend='nccl' e device=cuda)
 #
 # Variabili d'ambiente configurabili:
@@ -26,8 +26,8 @@
 #   BATCH_SIZE     campioni per batch per rank (default 128)
 #   N_EPOCHS       numero di epoch (default 5)
 #   LR             learning rate SGD (default 0.05)
-#   GCS_BUCKET     bucket GCS (solo se USE_SYNTHETIC=0)
-#   GCS_MODEL_PATH path GCS per il salvataggio del modello (default models/lezione7/)
+#   BUCKET         bucket GCS, senza gs:// (solo se USE_SYNTHETIC=0)
+#   MODEL_PATH     prefisso nel bucket per il modello (default lab5/ddp/)
 # =============================================================================
 
 import os
@@ -293,13 +293,13 @@ def train(rank: int, world_size: int, device: torch.device):
 def _save_model(model: MLP, world_size: int):
     """
     Salva i pesi del modello.
-    Locale: /tmp/model_lezione7.pth
-    GCS: gs://<GCS_BUCKET>/<GCS_MODEL_PATH>model_w<world_size>.pth
+    Locale: /tmp/model_lezione5.pth
+    GCS: gs://$BUCKET/$MODEL_PATH/model_w<world_size>.pth
     """
     use_synthetic = os.environ.get("USE_SYNTHETIC", "1") == "1"
 
     if use_synthetic:
-        local_path = f"/tmp/model_lezione7_w{world_size}.pth"
+        local_path = f"/tmp/model_lezione5_w{world_size}.pth"
         torch.save(model.state_dict(), local_path)
         print(f"[save] Modello salvato in {local_path}")
         return
@@ -313,9 +313,11 @@ def _save_model(model: MLP, world_size: int):
         torch.save(model.state_dict(), buf)
         buf.seek(0)
 
-        bucket_name = os.environ.get("GCS_BUCKET", "ias-luigi-asprino-bucket")
-        model_path  = os.environ.get("GCS_MODEL_PATH", "models/lezione7/")
-        blob_name   = f"{model_path}model_w{world_size}.pth"
+        bucket_name = os.environ.get("BUCKET", "").replace("gs://", "").strip("/")
+        if not bucket_name:
+            raise RuntimeError("variabile d'ambiente BUCKET non impostata")
+        model_path  = os.environ.get("MODEL_PATH", "lab5/ddp/").strip("/")
+        blob_name   = f"{model_path}/model_w{world_size}.pth"
 
         client = gcs_storage.Client()
         bucket = client.bucket(bucket_name)
@@ -325,7 +327,7 @@ def _save_model(model: MLP, world_size: int):
 
     except Exception as e:
         print(f"[save] Errore nel salvataggio su GCS: {e}")
-        local_path = f"/tmp/model_lezione7_w{world_size}.pth"
+        local_path = f"/tmp/model_lezione5_w{world_size}.pth"
         torch.save(model.state_dict(), local_path)
         print(f"[save] Fallback: salvato in {local_path}")
 

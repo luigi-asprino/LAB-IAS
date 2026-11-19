@@ -1,12 +1,12 @@
 # =============================================================================
-# model.py — Modello per la Lezione 7: Collective Communication Pattern
+# model.py — Modello per la Lezione 5 (parte 2): Collective Communication Pattern
 # =============================================================================
 #
 # Il modello è intenzionalmente semplice — un MLP a tre strati — per le
-# stesse ragioni della Lezione 6: l'obiettivo è osservare il pattern DDP
+# stesse ragioni della parte 1 (parameter server): l'obiettivo è osservare il pattern DDP
 # e la comunicazione collettiva, non ottimizzare l'accuracy.
 #
-# Differenze rispetto a SimpleNet (Lezione 6):
+# Differenze rispetto a SimpleNet (parte 1, parameter server):
 #   - Input configurabile (128 feature sintetiche invece di 784 MNIST)
 #   - Stesso schema architetturale per continuità didattica
 #   - Aggiunto metodo param_bytes() per quantificare il volume

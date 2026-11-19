@@ -23,7 +23,7 @@ Le lezioni sincrone si svolgono dalle 14:00 alle 16:00 e saranno registrate.
 | 2 | 15 ottobre | Acceleratori in GCP (GPU e TPU) | [`002-acceleratori`](002-acceleratori), [slide](https://docs.google.com/presentation/d/1lgPl4FqEK8QbgR_6Km86P-irWEHhK2PU5EzdPpDFzQM/edit?usp=sharing) |
 | 3 | 22 ottobre | Google Cloud Storage: gestione di dataset distribuiti | [`003-sharding-batching`](003-sharding-batching), [slide](https://docs.google.com/presentation/d/1GTJJQ-dr10vBwBSEtHoTs73BFJtC12WgZF_cgkxLs9s/edit?usp=sharing) |
 | 4 | 11 novembre | Containerizzazione e Custom Training Job su Vertex AI | [`004-training`](004-training), [slide](https://docs.google.com/presentation/d/17SkF8MjYK8BokkOtgOdStQdyRE7TN6WOuRMmQwtRXjE/edit?usp=sharing) |
-| 5 | 19 novembre | Parameter server pattern e collective communication pattern | in preparazione |
+| 5 | 19 novembre | Parameter server pattern e collective communication pattern | [`005-parameter-server-collective-communication`](005-parameter-server-collective-communication), [slide](https://docs.google.com/presentation/d/1rgdHeoP0ISOmM_teruvDDxEqRS4xXKwomtdV0FIjP28/edit?usp=sharing) |
 | 6 | 26 novembre | Elasticity e fault-tolerance: Spot VM e checkpoint automatici | in preparazione |
 | 7 | 10 dicembre | Sharded service pattern: serving di modelli di grandi dimensioni | in preparazione |
 | 8 | 17 dicembre | Fan-in/fan-out, synchronous/asynchronous e step memoization | in preparazione |

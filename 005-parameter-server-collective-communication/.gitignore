@@ -1,0 +1,5 @@
+# File generati durante l'esercitazione: non vanno committati
+env.sh
+job.yaml
+key.json
+__pycache__/

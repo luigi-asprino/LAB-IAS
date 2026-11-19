@@ -1,5 +1,5 @@
 # =============================================================================
-# dataset.py — Dataset per la Lezione 7: Collective Communication Pattern
+# dataset.py — Dataset per la Lezione 5 (parte 2): Collective Communication Pattern
 # =============================================================================
 #
 # Questo modulo espone due dataset alternativi:
@@ -9,7 +9,7 @@
 #                       Usato negli esercizi locali (Ex 0–4) e nei benchmark.
 #
 #   GCSDataset        — dataset MNIST precaricato su GCS, identico a quello
-#                       della Lezione 6. Usato nel Custom Training Job su
+#                       della parte 1 (parameter server). Usato nel Custom Training Job su
 #                       Vertex AI (versione GCP della lezione).
 #
 # Il training loop in train_ddp.py sceglie quale usare in base alla variabile
@@ -25,6 +25,7 @@
 
 import io
 import os
+import sys
 
 import numpy as np
 import torch
@@ -89,7 +90,7 @@ class GCSDataset(Dataset):
     """
     Dataset PyTorch che legge array NumPy da Google Cloud Storage.
 
-    Compatibile con il formato prodotto da upload_mnist.py nella Lezione 6.
+    Compatibile con il formato prodotto da upload_mnist.py nella parte 1 (parameter server).
     Si aspetta i file X.npy e y.npy in gs://<bucket>/<path>/.
 
     Usato solo nel Custom Training Job su Vertex AI; negli esercizi locali
@@ -138,6 +139,15 @@ class GCSDataset(Dataset):
 # Funzione pubblica: costruisce il DataLoader distribuito corretto
 # =============================================================================
 
+def _require_bucket() -> str:
+    """Bucket GCS da $BUCKET (senza gs://): obbligatoria solo con USE_SYNTHETIC=0."""
+    bucket = os.environ.get("BUCKET", "").replace("gs://", "").strip("/")
+    if not bucket:
+        sys.exit("ERRORE: con USE_SYNTHETIC=0 serve la variabile d'ambiente BUCKET "
+                 "(vedi il passo 0 del README)")
+    return bucket
+
+
 def build_dataloader(
     batch_size:   int  = 128,
     shuffle:      bool = True,
@@ -175,7 +185,7 @@ def build_dataloader(
         )
     else:
         dataset = GCSDataset(
-            bucket=os.environ.get("GCS_BUCKET", "ias-luigi-asprino-bucket"),
+            bucket=_require_bucket(),
             path="datasets/mnist/train",
         )
 

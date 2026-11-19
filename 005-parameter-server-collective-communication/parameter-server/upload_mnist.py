@@ -13,6 +13,7 @@
 #   gs://BUCKET/datasets/mnist/test/y.npy   (10000,)     int64
 #
 # Utilizzo:
+#   export BUCKET="<NOME_DEL_BUCKET>"   # o passo 0 del README
 #   python upload_mnist.py
 #
 # Prerequisiti:
@@ -21,14 +22,18 @@
 # =============================================================================
 
 import io
+import os
+import sys
 import struct
 import gzip
 import urllib.request
 import numpy as np
 from google.cloud import storage
 
-# Nome del bucket GCS di destinazione
-BUCKET = "ias-luigi-asprino-bucket"
+# Nome del bucket GCS di destinazione, da $BUCKET (passo 0 del README)
+BUCKET = os.environ.get("BUCKET", "").replace("gs://", "").strip("/")
+if not BUCKET:
+    sys.exit("ERRORE: variabile d'ambiente BUCKET non impostata (vedi il passo 0 del README)")
 
 # Prefisso del path all'interno del bucket
 PREFIX = "datasets/mnist"
@@ -120,7 +125,7 @@ def upload_npy(bucket_obj, arr: np.ndarray, blob_path: str):
 if __name__ == "__main__":
     # Inizializza il client GCS usando le Application Default Credentials.
     # Assicurarsi di aver eseguito: gcloud auth application-default login
-    client = storage.Client()
+    client = storage.Client(project=os.environ.get("PROJECT_ID"))
     bucket_obj = client.bucket(BUCKET)
 
     for split in ["train", "test"]:
@@ -135,4 +140,4 @@ if __name__ == "__main__":
         upload_npy(bucket_obj, y, f"{PREFIX}/{split}/y.npy")
 
     print("\nDataset MNIST disponibile su GCS.")
-    print(f"Verifica: gsutil ls -lh gs://{BUCKET}/{PREFIX}/")
+    print(f"Verifica: gcloud storage ls -l gs://{BUCKET}/{PREFIX}/train/")

@@ -1,4 +1,6 @@
-# Lezione 7 — Collective Communication Pattern
+# Lezione 05 (parte 2) — Collective Communication Pattern
+
+> Seconda metà della lezione 5, dopo il [parameter server](../parameter-server).
 
 ## Obiettivi
 
@@ -15,8 +17,9 @@ Al termine di questa lezione lo studente sarà in grado di:
 ## Struttura della directory
 
 ```
-007-collective-communication/
+005-parameter-server-collective-communication/collective-communication/
 ├── local/                  # Esercizi eseguibili in locale con torchrun (nessuna GPU richiesta)
+│   ├── primitives.py       # broadcast, reduce, all_reduce, all_gather, scatter + ring all-reduce a mano
 │   ├── dataset.py          # SyntheticDataset + GCSDataset + build_dataloader()
 │   ├── model.py            # MLP a tre strati con param_bytes() per il benchmark
 │   └── train_ddp.py        # Script principale: training DDP completo
@@ -26,7 +29,7 @@ Al termine di questa lezione lo studente sarà in grado di:
     ├── model.py            # Stesso modello
     ├── train_ddp.py        # train_ddp con parsing di CLUSTER_SPEC per Vertex AI
     ├── Dockerfile          # Container per il job multi-worker
-    ├── job_config.yaml     # Configurazione con due workerPoolSpecs (master + worker)
+    ├── (job.yaml)          # Generato dal README di gcp/ con le proprie variabili
     └── requirements.txt
 ```
 
@@ -47,6 +50,9 @@ python -c "import torch.distributed as dist; print('gloo:', dist.is_gloo_availab
 
 ```bash
 cd local
+
+# Primitive collettive, una per volta (4 processi)
+torchrun --nproc_per_node=4 primitives.py
 
 # 1 processo — baseline senza comunicazione collettiva
 torchrun --nproc_per_node=1 train_ddp.py
@@ -88,45 +94,9 @@ Il primo è torchrun che limita i thread OpenMP per evitare sovraccarico. Il sec
 
 ## Versione GCP — Vertex AI Custom Training Job
 
-### Prerequisiti
-
-- `gcloud` autenticato: `gcloud auth login`
-- Progetto configurato: `gcloud config set project test-project-493915`
-- Docker configurato per Artifact Registry: `gcloud auth configure-docker europe-west4-docker.pkg.dev`
-
-### Comandi
-
-```bash
-cd gcp
-
-# Build e push del container
-docker build -t europe-west4-docker.pkg.dev/test-project-493915/ias-repo/lab07-ddp:latest .
-docker push europe-west4-docker.pkg.dev/test-project-493915/ias-repo/lab07-ddp:latest
-
-# Lancio del job (2 VM: 1 master + 1 worker)
-gcloud ai custom-jobs create \
-  --region=europe-west4 \
-  --display-name=lab07-ddp-collective \
-  --config=job_config.yaml
-
-# Log in tempo reale
-gcloud ai custom-jobs stream-logs <JOB_ID> --region=europe-west4
-```
-
-### Struttura del job
-
-Vertex AI avvia due container separati (uno per pool) e inietta in ciascuno la variabile `CLUSTER_SPEC` con la topologia del cluster. `train_ddp.py` la legge e ricava `RANK`, `WORLD_SIZE` e `MASTER_ADDR`.
-
-```
-workerPoolSpecs[0]  →  1 replica  →  rank 0 (master)
-workerPoolSpecs[1]  →  1 replica  →  rank 1 (worker)
-```
-
-> **Nota**: Vertex AI impone `replicaCount: 1` per il primo pool. Per avere N worker totali si usano N pool distinti, ciascuno con una replica.
-
-### Quota GPU esaurita
-
-Se il job restituisce errore `429 RESOURCE_EXHAUSTED` per quota T4, rimuovere le righe `acceleratorType` e `acceleratorCount` dal `job_config.yaml` per eseguire su CPU. Il codice usa automaticamente `backend='gloo'` quando CUDA non è disponibile.
+Le istruzioni complete sono in [`gcp/README.md`](gcp/README.md): come nella lezione 4, i propri valori
+(progetto, regione, bucket, immagine) si impostano una volta nel passo 0 e `job.yaml` si genera da quelle variabili.
+Nessun file del repository contiene valori di un progetto specifico.
 
 ---
 

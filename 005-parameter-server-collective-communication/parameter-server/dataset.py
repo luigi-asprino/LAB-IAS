@@ -1,7 +1,7 @@
 import os
+import sys
 import io
 import torch
-import gcsfs
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 
@@ -10,7 +10,8 @@ from torch.utils.data import Dataset, DataLoader
 # token="google_default" usa le credenziali Application Default Credentials
 # (ADC) già configurate nell'ambiente Vertex AI — nessuna chiave esplicita
 # necessaria all'interno del container sul cluster.
-fs = gcsfs.GCSFileSystem(token="google_default")
+# L'import è "pigro" (dentro GCSDataset) così il test locale con
+# USE_SYNTHETIC=1 non richiede né gcsfs né credenziali GCP.
 
 
 # ── Dataset class ────────────────────────────────────────────────────────
@@ -30,10 +31,12 @@ class GCSDataset(Dataset):
 
     def __init__(self, bucket: str, path: str):
         """
-        bucket : nome del bucket GCS, es. "ias-luigi-asprino-bucket"
+        bucket : nome del bucket GCS (valore di $BUCKET), senza gs://
         path   : percorso relativo alla radice del bucket,
                  es. "datasets/mnist/train"
         """
+        import gcsfs
+        fs = gcsfs.GCSFileSystem(token="google_default")
         gcs_path = f"{bucket}/{path}"
 
         # Legge X.npy direttamente da GCS in un buffer in memoria.
@@ -100,6 +103,48 @@ def load_from_gcs(
     )
 
 
+def require_bucket() -> str:
+    """Bucket GCS da $BUCKET (senza gs://). Obbligatoria quando si legge o scrive su GCS."""
+    bucket = os.environ.get("BUCKET", "").replace("gs://", "").strip("/")
+    if not bucket:
+        sys.exit("ERRORE: variabile d'ambiente BUCKET non impostata "
+                 "(vedi il passo 0 del README)")
+    return bucket
+
+
+def load_dataset(num_shards: int = 1, shard_index: int = 0,
+                 batch_size: int = 64) -> DataLoader:
+    """
+    DataLoader sullo shard `shard_index` (di `num_shards`) del training set.
+
+    Ogni worker del PS riceve campioni disgiunti: indice ≡ shard_index
+    (mod num_shards). È la stessa idea di DistributedSampler, che useremo
+    con DDP nella seconda parte della lezione.
+
+    Con USE_SYNTHETIC=1 usa dati casuali con la forma di MNIST
+    (784 feature, 10 classi): serve per provare il pattern in locale
+    senza GCS. Altrimenti legge gs://$BUCKET/datasets/mnist/train.
+    """
+    from torch.utils.data import Subset, TensorDataset
+    if os.environ.get("USE_SYNTHETIC", "0") == "1":
+        n = int(os.environ.get("N_SAMPLES", "6000"))
+        g = torch.Generator().manual_seed(42)
+        X = torch.rand(n, 784, generator=g)
+        # Label = classe di una proiezione lineare fissa: problema
+        # apprendibile, così la loss scende anche con dati sintetici.
+        W = torch.randn(784, 10, generator=g)
+        full = TensorDataset(X, (X @ W).argmax(dim=1))
+    else:
+        full = GCSDataset(
+            bucket=require_bucket(),
+            path="datasets/mnist/train",
+        )
+    shard = Subset(full, list(range(shard_index, len(full), num_shards)))
+    print(f"[dataset] shard {shard_index}/{num_shards}: "
+          f"{len(shard)} campioni su {len(full)}")
+    return DataLoader(shard, batch_size=batch_size, shuffle=True)
+
+
 # ── Script di upload del dataset (eseguito una volta, da Workbench) ──────
 # Questo blocco non viene eseguito durante il training — serve solo
 # al docente per caricare MNIST su GCS prima della lezione, da eseguire
@@ -108,7 +153,7 @@ if __name__ == "__main__":
     from torchvision import datasets, transforms
     from google.cloud import storage
 
-    BUCKET = os.environ.get("GCS_BUCKET", "ias-luigi-asprino-bucket")
+    BUCKET = require_bucket()
     PREFIX = "datasets/mnist"
 
     print("Scarico MNIST da torchvision...")
